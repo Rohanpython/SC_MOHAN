@@ -127,10 +127,14 @@ def process_uploaded_pdfs(uploaded_pdfs):
 
 # Combine original and uploaded embeddings
 def combine_embeddings(original_store, uploaded_store):
-    combined_texts = original_store.texts + uploaded_store.texts
-    combined_embeddings = original_store.embeddings + uploaded_store.embeddings
-    combined_metadata = original_store.metadatas + uploaded_store.metadatas
-    return FAISS.from_texts(combined_texts, original_store.embedding_model, metadatas=combined_metadata)
+    original_docs = original_store.as_retriever().get_documents()
+    uploaded_docs = uploaded_store.as_retriever().get_documents()
+
+    combined_texts = [doc.page_content for doc in original_docs + uploaded_docs]
+    combined_metadata = [doc.metadata for doc in original_docs + uploaded_docs]
+
+    embeddings = original_store.embedding_model
+    return FAISS.from_texts(combined_texts, embeddings, metadatas=combined_metadata)
 
 def main():
     st.write(css, unsafe_allow_html=True)  # Use CSS from the external file
