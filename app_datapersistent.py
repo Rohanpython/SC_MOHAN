@@ -39,6 +39,13 @@ def save_chat_history(chat_history):
     with open(history_file, 'w') as file:
         json.dump(chat_history, file)
 
+# Function to delete a particular entry from chat history
+def delete_chat(index):
+    if "chat_history" in st.session_state:
+        del st.session_state.chat_history[index:index+2]  # Remove both user and bot messages (pairs)
+        save_chat_history(st.session_state.chat_history)
+        st.experimental_rerun()  # Refresh the app to reflect changes
+
 # Define the prompt template for conversation
 custom_template = """Given the following conversation and a follow-up question, rephrase the follow-up question to be a standalone question, in its original language.
 Chat History:
@@ -97,7 +104,7 @@ def handle_question(question):
     else:
         st.write("Embeddings not loaded. Please check the FAISS index path.")
 
-# Display memory in the sidebar with buttons for each previous prompt
+# Display memory in the sidebar with buttons for each previous prompt and delete option
 def display_memory_in_sidebar():
     st.sidebar.header("Conversation History")
     
@@ -106,8 +113,12 @@ def display_memory_in_sidebar():
         for i in range(0, len(st.session_state.chat_history), 2):
             user_msg = st.session_state.chat_history[i]['content']
             bot_msg = st.session_state.chat_history[i+1]['content'] if i+1 < len(st.session_state.chat_history) else "No response yet"
+            
+            # Show the user message with a button to delete the corresponding entry
             with st.sidebar.expander(f"User: {user_msg}"):
                 st.write(f"Bot: {bot_msg}")
+                if st.sidebar.button(f"Delete Chat {i//2 + 1}", key=f"delete_{i}"):
+                    delete_chat(i)  # Delete the chat when the button is clicked
 
 # Function to process uploaded PDFs
 def process_uploaded_pdfs(uploaded_pdfs):
