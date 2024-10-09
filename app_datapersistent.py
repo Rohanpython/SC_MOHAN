@@ -7,7 +7,7 @@ from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
-from embeddings import load_embeddings_offline  # Import the embeddings logic
+from embeddings import load_embeddings_offline, process_pdfs_in_folder_and_save_embeddings  # Import the embeddings logic
 from htmlTemplates import css, bot_template, user_template  # Import CSS and HTML templates
 
 # Page configuration must be the first Streamlit command
@@ -20,7 +20,7 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     st.error("OPENAI_API_KEY not found in environment variables.")
-    st.write("Available environment variables:", os.environ) 
+    st.write("Available environment variables:", os.environ)
     st.stop()  # Stop execution if the API key is not found
 
 # Define the JSON file path to save/load the chat history
@@ -108,20 +108,64 @@ def display_memory_in_sidebar():
             with st.sidebar.expander(f"User: {user_msg}"):
                 st.write(f"Bot: {bot_msg}")
 
+# Function to process uploaded PDFs
+def process_uploaded_pdfs(uploaded_pdfs):
+    # Save the uploaded PDFs to a temporary directory
+    temp_dir = "uploaded_pdfs"
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    for uploaded_pdf in uploaded_pdfs:
+        file_path = os.path.join(temp_dir, uploaded_pdf.name)
+        with open(file_path, "wb") as f:
+            f.write(uploaded_pdf.getbuffer())
+    
+    # Process the PDFs and save embeddings to FAISS
+    faiss_index_path = "faiss_index_uploaded"
+    process_pdfs_in_folder_and_save_embeddings(temp_dir, faiss_index_path)
+    st.success("PDFs processed and embeddings saved.")
+
 def main():
     st.write(css, unsafe_allow_html=True)  # Use CSS from the external file
 
-    # Only load FAISS embeddings once if not already loaded in the session
-    if "vectorstore" not in st.session_state:
-        faiss_index_path = "faiss_index"
+    # PDF Upload Section
+    st.sidebar.subheader("Upload PDFs to Index")
+    uploaded_pdfs = st.sidebar.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True)
+
+    if uploaded_pdfs:
+        if st.sidebar.button("Process PDFs"):
+            process_uploaded_pdfs(uploaded_pdfs)
+    
+    # Option to choose which embeddings to use: default or uploaded
+    embedding_choice = st.sidebar.radio("Choose Embeddings", ('Original Embeddings', 'Uploaded PDF Embeddings'))
+
+    # Load embeddings based on the user's choice
+    if "vectorstore" not in st.session_state or "vectorstore_uploaded" not in st.session_state:
         try:
-            st.session_state.vectorstore = load_embeddings_offline(faiss_index_path)
+            # Load original embeddings
+            st.session_state.vectorstore = load_embeddings_offline("faiss_index")
             st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
+            
+            # Load uploaded embeddings if available
+            if os.path.exists("faiss_index_uploaded"):
+                st.session_state.vectorstore_uploaded = load_embeddings_offline("faiss_index_uploaded")
+                st.session_state.conversation_uploaded = get_conversation_chain(st.session_state.vectorstore_uploaded)
+            else:
+                st.session_state.vectorstore_uploaded = None
+                st.session_state.conversation_uploaded = None
+
             st.session_state.chat_history = load_chat_history()  # Load chat history from file
             st.success("Embeddings successfully loaded offline!")
         except Exception as e:
             st.error(f"Failed to load embeddings: {e}")
             st.session_state.conversation = None
+
+    # Switch between the two embeddings
+    if embedding_choice == 'Original Embeddings':
+        st.session_state.conversation = st.session_state.conversation
+    elif embedding_choice == 'Uploaded PDF Embeddings' and st.session_state.vectorstore_uploaded:
+        st.session_state.conversation = st.session_state.conversation_uploaded
+    else:
+        st.write("No uploaded PDF embeddings available.")
 
     st.header("Chat with Pre-Computed Embeddings :books:")
 
