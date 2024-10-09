@@ -10,11 +10,18 @@ from langchain.chat_models import ChatOpenAI
 from embeddings import load_embeddings_offline  # Import the embeddings logic
 from htmlTemplates import css, bot_template, user_template  # Import CSS and HTML templates
 
+# Page configuration must be the first Streamlit command
+st.set_page_config(page_title="Chat with Embeddings", page_icon=":books:")
+
 # Load environment variables from the .env file
 load_dotenv()
 
 # Retrieve the OpenAI API key from environment variables
 openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    st.error("OPENAI_API_KEY not found in environment variables.")
+else:
+    st.write(f"OpenAI API Key Loaded: {openai_api_key[:5]}...")
 
 # Ensure that the OpenAI API key is set
 if not openai_api_key:
@@ -106,8 +113,6 @@ def display_memory_in_sidebar():
                 st.write(f"Bot: {bot_msg}")
 
 def main():
-    # Page configuration
-    st.set_page_config(page_title="Chat with Embeddings", page_icon=":books:")
     st.write(css, unsafe_allow_html=True)  # Use CSS from the external file
 
     # Only load FAISS embeddings once if not already loaded in the session
