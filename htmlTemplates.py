@@ -1,45 +1,69 @@
+# CSS for styling the chat messages
 css = '''
 <style>
 .chat-message {
-    padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex
+    padding: 1.5rem; 
+    border-radius: 0.5rem; 
+    margin-bottom: 1rem; 
+    display: flex;
+    align-items: center;
 }
+
 .chat-message.user {
-    align: right,
-    background-color: #2b313e
+    justify-content: flex-end;
+    background-color: #2b313e;
 }
+
 .chat-message.bot {
-    background-color: #475063
+    justify-content: flex-start;
+    background-color: #475063;
 }
+
 .chat-message .avatar {
-  width: 20%;
+    width: 60px;
+    height: 60px;
+    margin-right: 1rem;
 }
+
+.chat-message.user .avatar {
+    margin-left: 1rem;
+    margin-right: 0;
+}
+
 .chat-message .avatar img {
-  max-width: 78px;
-  max-height: 78px;
-  border-radius: 50%;
-  object-fit: cover;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
 }
+
 .chat-message .message {
-  width: 80%;
-  padding: 0 1.5rem;
-  color: #fff;
+    max-width: 80%;
+    padding: 1rem;
+    color: #fff;
+    border-radius: 0.5rem;
+    line-height: 1.5;
+    word-wrap: break-word;
 }
+</style>
 '''
+
+# HTML template for bot messages (left-aligned)
 bot_template = '''
 <div class="chat-message bot">
     <div class="avatar">
-        <img src="https://cdn-icons-png.flaticon.com/512/6134/6134346.png" style="max-height: 78px; max-width: 78px; border-radius: 50%; object-fit: cover;">
+        <img src="https://cdn-icons-png.flaticon.com/512/6134/6134346.png" alt="Bot Avatar">
     </div>
     <div class="message">{{MSG}}</div>
 </div>
 '''
 
+# HTML template for user messages (right-aligned)
 user_template = '''
 <div class="chat-message user">
-    <div class="message" style="text-align:right">{{MSG}}</div>
+    <div class="message">{{MSG}}</div>
     <div class="avatar">
-        <img src="https://png.pngtree.com/png-vector/20190321/ourmid/pngtree-vector-users-icon-png-image_856952.jpg">
+        <img src="https://png.pngtree.com/png-vector/20190321/ourmid/pngtree-vector-users-icon-png-image_856952.jpg" alt="User Avatar">
     </div>    
-    
 </div>
 '''
