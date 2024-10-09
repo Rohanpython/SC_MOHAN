@@ -9,7 +9,6 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from embeddings import load_embeddings_offline, process_pdfs_in_folder_and_save_embeddings  # Import the embeddings logic
 from htmlTemplates import css, bot_template, user_template  # Import CSS and HTML templates
-from langchain_community.vectorstores import FAISS
 
 # Page configuration must be the first Streamlit command
 st.set_page_config(page_title="Chat with Embeddings", page_icon=":books:")
@@ -83,6 +82,9 @@ def simulate_typing_response(message_content, delay=0.1):
 
 # Function to handle user question and generate a response
 def handle_question(question):
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
         st.session_state.chat_history.append({'role': 'user', 'content': question})
@@ -121,22 +123,22 @@ def process_uploaded_pdfs(uploaded_pdfs):
             f.write(uploaded_pdf.getbuffer())
     
     # Process the PDFs and save embeddings to FAISS
-    faiss_index_path = "faiss_index_uploaded"
+    faiss_index_path = "faiss_index"
     process_pdfs_in_folder_and_save_embeddings(temp_dir, faiss_index_path)
-    st.success("PDFs processed and embeddings saved.")
 
-# Combine original and uploaded embeddings
-def combine_embeddings(original_store, uploaded_store):
-    original_docs = original_store.as_retriever().get_documents()
-    uploaded_docs = uploaded_store.as_retriever().get_documents()
-
-    combined_texts = [doc.page_content for doc in original_docs + uploaded_docs]
-    combined_metadata = [doc.metadata for doc in original_docs + uploaded_docs]
-
-    embeddings = original_store.embedding_model
-    return FAISS.from_texts(combined_texts, embeddings, metadatas=combined_metadata)
+    # Reload the vectorstore after processing the new PDFs
+    try:
+        st.session_state.vectorstore = load_embeddings_offline(faiss_index_path)
+        st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
+        st.success("PDFs processed, embeddings updated, and FAISS index reloaded.")
+    except Exception as e:
+        st.error(f"Failed to reload embeddings after PDF processing: {e}")
 
 def main():
+    # Initialize chat history if not already present
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = load_chat_history()
+
     st.write(css, unsafe_allow_html=True)  # Use CSS from the external file
 
     # PDF Upload Section
@@ -147,31 +149,18 @@ def main():
         if st.sidebar.button("Process PDFs"):
             process_uploaded_pdfs(uploaded_pdfs)
     
-    # Load embeddings only once if not already loaded in the session
-    if "vectorstore" not in st.session_state or "vectorstore_combined" not in st.session_state:
+    # Only load FAISS embeddings once if not already loaded in the session
+    if "vectorstore" not in st.session_state:
+        faiss_index_path = "faiss_index"
         try:
-            # Load original embeddings
-            st.session_state.vectorstore = load_embeddings_offline("faiss_index")
-
-            # Load uploaded embeddings if available
-            if os.path.exists("faiss_index_uploaded"):
-                st.session_state.vectorstore_uploaded = load_embeddings_offline("faiss_index_uploaded")
-                # Combine original and uploaded embeddings
-                st.session_state.vectorstore_combined = combine_embeddings(
-                    st.session_state.vectorstore,
-                    st.session_state.vectorstore_uploaded
-                )
-            else:
-                st.session_state.vectorstore_combined = st.session_state.vectorstore
-
-            st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore_combined)
-            st.session_state.chat_history = load_chat_history()  # Load chat history from file
-            st.success("Embeddings successfully loaded and combined!")
+            st.session_state.vectorstore = load_embeddings_offline(faiss_index_path)
+            st.session_state.conversation = get_conversation_chain(st.session_state.vectorstore)
+            st.success("Embeddings successfully loaded offline!")
         except Exception as e:
             st.error(f"Failed to load embeddings: {e}")
             st.session_state.conversation = None
 
-    st.header("Chat with Combined Embeddings :books:")
+    st.header("Chat with Pre-Computed Embeddings :books:")
 
     # Input field for user questions
     question = st.text_input("Ask a question:")
