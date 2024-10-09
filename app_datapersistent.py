@@ -136,12 +136,17 @@ def process_uploaded_pdfs(uploaded_pdfs):
     process_pdfs_in_folder_and_save_embeddings(temp_dir, faiss_index_path)
     st.success("PDFs processed and embeddings saved.")
 
-# Combine original and uploaded embeddings
+# Combine embeddings by using the FAISS retrievers
 def combine_embeddings(original_store, uploaded_store):
-    combined_texts = original_store.texts + uploaded_store.texts
-    combined_embeddings = original_store.embeddings + uploaded_store.embeddings
-    combined_metadata = original_store.metadatas + uploaded_store.metadatas
-    return FAISS.from_texts(combined_texts, original_store.embedding_model, metadatas=combined_metadata)
+    # Retrieve documents and embeddings from both original and uploaded embeddings
+    original_docs = original_store.get_documents()
+    uploaded_docs = uploaded_store.get_documents()
+    
+    combined_texts = [doc.page_content for doc in original_docs + uploaded_docs]
+    combined_metadata = [doc.metadata for doc in original_docs + uploaded_docs]
+
+    embeddings = original_store.embedding_model
+    return FAISS.from_texts(combined_texts, embeddings, metadatas=combined_metadata)
 
 def main():
     st.write(css, unsafe_allow_html=True)  # Use CSS from the external file
