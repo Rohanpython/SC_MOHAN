@@ -20,12 +20,7 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     st.error("OPENAI_API_KEY not found in environment variables.")
-else:
-    st.write(f"OpenAI API Key Loaded: {openai_api_key[:5]}...")
-
-# Ensure that the OpenAI API key is set
-if not openai_api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment variables.")
+    st.stop()  # Stop execution if the API key is not found
 
 # Define the JSON file path to save/load the chat history
 history_file = "chat_history.json"

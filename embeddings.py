@@ -41,17 +41,12 @@ def get_pdf_text_with_metadata(docs):
             # Skip this file and continue with the others
             continue
     
-    # Check if we have extracted any text
-    if not chunks:
-        print("No text extracted from any PDFs.")
-    
     return chunks, metadata
 
 # Function to split text into chunks with metadata
 def get_chunks_with_metadata(text_list, metadata):
     # Join the list of text into a single string
-    if isinstance(text_list, list):
-        raw_text = "\n".join(text_list)  # Join with newlines between pages
+    raw_text = "\n".join(text_list)  # Join with newlines between pages
     
     if not raw_text:
         raise ValueError("Raw text is empty, cannot create chunks.")
