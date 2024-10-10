@@ -99,32 +99,33 @@ def handle_question(question):
     else:
         st.write("Embeddings not loaded. Please check the FAISS index path.")
 
-# Display memory in the sidebar with buttons for each previous prompt and delete button next to the expander
+# Display memory in the sidebar with buttons for each previous prompt and delete button
 def display_memory_in_sidebar():
     st.sidebar.header("Conversation History")
 
-    # Display the chat history with expanders and delete buttons
+    # Display the chat history with a "three dots" delete option for each
     if "chat_history" in st.session_state and st.session_state.chat_history:
-        # Iterate through the chat history and display user and bot messages
         for i in range(0, len(st.session_state.chat_history), 2):
             user_msg = st.session_state.chat_history[i]['content']
             bot_msg = st.session_state.chat_history[i+1]['content'] if i+1 < len(st.session_state.chat_history) else "No response yet"
 
-            # Use columns to place the expander and delete button side by side
-            col1, col2 = st.sidebar.columns([0.8, 0.2])
+            # Create a row with the conversation and a delete button
+            col1, col2 = st.sidebar.columns([0.85, 0.15])
 
             with col1:
-                # Add an expander for the conversation history
+                # Display the conversation expander
                 with st.expander(f"User: {user_msg}", expanded=False):
                     st.write(f"Bot: {bot_msg}")
 
             with col2:
-                # Add a delete button beside each expander
-                if st.button("❌", key=f"delete_{i}"):
-                    # Delete the user-bot pair from chat history
-                    del st.session_state.chat_history[i:i+2]
-                    save_chat_history(st.session_state.chat_history)  # Save updated history to file
-                    st.experimental_rerun()  # Refresh the app to show the updated chat history
+                # Display the "three dots" icon as a button to delete the conversation
+                if st.button("⋮", key=f"delete_{i}"):
+                    # When clicked, show delete button for the entry
+                    if st.sidebar.button(f"Delete {i//2 + 1}", key=f"confirm_delete_{i}"):
+                        # Delete the user-bot pair from chat history
+                        del st.session_state.chat_history[i:i+2]
+                        save_chat_history(st.session_state.chat_history)  # Save updated history to file
+                        st.experimental_rerun()  # Refresh the app to show the updated chat history
 
 # Function to process uploaded PDFs
 def process_uploaded_pdfs(uploaded_pdfs):
