@@ -105,6 +105,7 @@ def display_memory_in_sidebar():
 
     # Display the chat history with expanders and delete buttons
     if "chat_history" in st.session_state and st.session_state.chat_history:
+        # Iterate through the chat history and display user and bot messages
         for i in range(0, len(st.session_state.chat_history), 2):
             user_msg = st.session_state.chat_history[i]['content']
             bot_msg = st.session_state.chat_history[i+1]['content'] if i+1 < len(st.session_state.chat_history) else "No response yet"
@@ -113,8 +114,8 @@ def display_memory_in_sidebar():
             with st.sidebar.expander(f"User: {user_msg}", expanded=False):
                 st.write(f"Bot: {bot_msg}")
 
-                # Add a delete button for each message pair
-                if st.sidebar.button(f"Delete", key=f"delete_{i}"):
+                # Place the delete button inside the expander
+                if st.button(f"Delete message {i//2 + 1}", key=f"delete_{i}"):
                     # Delete the user-bot pair from chat history
                     del st.session_state.chat_history[i:i+2]
                     save_chat_history(st.session_state.chat_history)  # Save updated history to file
