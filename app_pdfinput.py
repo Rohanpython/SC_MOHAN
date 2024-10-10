@@ -109,21 +109,17 @@ def display_memory_in_sidebar():
             user_msg = st.session_state.chat_history[i]['content']
             bot_msg = st.session_state.chat_history[i+1]['content'] if i+1 < len(st.session_state.chat_history) else "No response yet"
 
-            # Use columns to create space for the delete button and text
-            with st.sidebar.expander(f"User: {user_msg}"):
-                col1, col2 = st.sidebar.columns([0.85, 0.15])
+            # Use a container for each user-bot message pair
+            with st.sidebar.expander(f"User: {user_msg}", expanded=False):
+                # Display the bot message
+                st.write(f"Bot: {bot_msg}")
 
-                # Display the bot message in the main area
-                with col1:
-                    st.write(f"Bot: {bot_msg}")
-
-                # Add a delete button in the second column
-                with col2:
-                    if st.button("❌", key=f"delete_{i}"):
-                        # Delete the user-bot pair from chat history
-                        del st.session_state.chat_history[i:i+2]
-                        save_chat_history(st.session_state.chat_history)  # Save updated history to file
-                        st.experimental_rerun()  # Refresh the app to show the updated chat history
+                # Add a delete button for each message pair
+                if st.button(f"Delete", key=f"delete_{i}"):
+                    # Delete the user-bot pair from chat history
+                    del st.session_state.chat_history[i:i+2]
+                    save_chat_history(st.session_state.chat_history)  # Save updated history to file
+                    st.experimental_rerun()  # Refresh the app to show the updated chat history
 
 # Function to process uploaded PDFs
 def process_uploaded_pdfs(uploaded_pdfs):
