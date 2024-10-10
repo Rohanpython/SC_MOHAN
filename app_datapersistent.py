@@ -38,18 +38,14 @@ def save_chat_history(chat_history):
     with open(history_file, 'w') as file:
         json.dump(chat_history, file)
 
-# Define the refined prompt template for conversation
-custom_template = """Given the following conversation, a user dataset, and a follow-up question, rephrase the follow-up question to be a standalone question, incorporating relevant context from the dataset.
-User Dataset: {dataset_summary}
+# Define the prompt template for conversation
+custom_template = """Given the following conversation and a follow-up question, rephrase the follow-up question to be a standalone question, in its original language.
 Chat History:
 {chat_history}
 Follow Up Input: {question}
 Standalone question: """
 
 CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
-
-# Example dataset summary
-dataset_summary = "This dataset contains research papers focused on artificial intelligence, machine learning algorithms, and their applications."
 
 # Function to create a conversation chain using the preloaded vectorstore
 def get_conversation_chain(vectorstore):
@@ -67,48 +63,39 @@ def get_conversation_chain(vectorstore):
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=vectorstore.as_retriever(),
-        condense_question_prompt=CUSTOM_QUESTION_PROMPT.format(dataset_summary=dataset_summary),
+        condense_question_prompt=CUSTOM_QUESTION_PROMPT,
         memory=memory
     )
     return conversation_chain
 
-# Function to simulate typing word by word with dynamic delay
-def simulate_typing_response(message_content):
+# Function to simulate typing word by word
+def simulate_typing_response(message_content, delay=0.1):
     dynamic_area = st.empty()
     full_message = ""
     words = message_content.split()
 
-    # Adjust delay based on the length of the message
-    delay = 0.05 if len(message_content) < 50 else 0.1
+    # Loop through each word, adding it to the output one by one
     for word in words:
         full_message += word + " "
         dynamic_area.markdown(bot_template.replace("{{MSG}}", full_message), unsafe_allow_html=True)
         time.sleep(delay)
 
-# Function to generate a personalized response based on the user's dataset
-def generate_personalized_response(question):
+# Function to handle user question and generate a response
+def handle_question(question):
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
     if st.session_state.conversation:
         response = st.session_state.conversation({'question': question})
-
-        # Retrieve related documents to add more context
-        related_documents = st.session_state.vectorstore.similarity_search(question, k=2)  # Retrieve top 2 related docs
-
-        personalized_response = response['answer'] + "\n\nBased on your dataset, here are relevant sections:\n"
-        for doc in related_documents:
-            personalized_response += f"- {doc.metadata['title']}: {doc.page_content[:200]}...\n"
-        
         st.session_state.chat_history.append({'role': 'user', 'content': question})
-        st.session_state.chat_history.append({'role': 'bot', 'content': personalized_response, 'related_doc': related_documents[0].metadata['title']})
+        st.session_state.chat_history.append({'role': 'bot', 'content': response['answer']})
 
         # Save chat history to file
         save_chat_history(st.session_state.chat_history)
 
         # Only display the latest user question and bot response
         st.write(user_template.replace("{{MSG}}", question), unsafe_allow_html=True)
-        simulate_typing_response(personalized_response)
+        simulate_typing_response(response['answer'])
     else:
         st.write("Embeddings not loaded. Please check the FAISS index path.")
 
@@ -121,13 +108,12 @@ def display_memory_in_sidebar():
         for i in range(0, len(st.session_state.chat_history), 2):
             user_msg = st.session_state.chat_history[i]['content']
             bot_msg = st.session_state.chat_history[i+1]['content'] if i+1 < len(st.session_state.chat_history) else "No response yet"
-            related_doc = st.session_state.chat_history[i+1].get('related_doc', "No document")
             with st.sidebar.expander(f"User: {user_msg}"):
                 st.write(f"Bot: {bot_msg}")
-                st.write(f"Related Document: {related_doc}")
 
-# Function to process uploaded PDFs and save embeddings
+# Function to process uploaded PDFs
 def process_uploaded_pdfs(uploaded_pdfs):
+    # Save the uploaded PDFs to a temporary directory
     temp_dir = "uploaded_pdfs"
     os.makedirs(temp_dir, exist_ok=True)
     
@@ -136,6 +122,7 @@ def process_uploaded_pdfs(uploaded_pdfs):
         with open(file_path, "wb") as f:
             f.write(uploaded_pdf.getbuffer())
     
+    # Process the PDFs and save embeddings to FAISS
     faiss_index_path = "faiss_index"
     process_pdfs_in_folder_and_save_embeddings(temp_dir, faiss_index_path)
 
@@ -178,7 +165,7 @@ def main():
     # Input field for user questions
     question = st.text_input("Ask a question:")
     if question:
-        generate_personalized_response(question)
+        handle_question(question)
 
     # Display the conversation history in the sidebar
     display_memory_in_sidebar()
