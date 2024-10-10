@@ -99,7 +99,7 @@ def handle_question(question):
     else:
         st.write("Embeddings not loaded. Please check the FAISS index path.")
 
-# Display memory in the sidebar with buttons for each previous prompt and delete button
+# Display memory in the sidebar with buttons for each previous prompt and delete button next to the expander
 def display_memory_in_sidebar():
     st.sidebar.header("Conversation History")
 
@@ -110,12 +110,17 @@ def display_memory_in_sidebar():
             user_msg = st.session_state.chat_history[i]['content']
             bot_msg = st.session_state.chat_history[i+1]['content'] if i+1 < len(st.session_state.chat_history) else "No response yet"
 
-            # Use an expander for each user-bot message pair
-            with st.sidebar.expander(f"User: {user_msg}", expanded=False):
-                st.write(f"Bot: {bot_msg}")
+            # Use columns to place the expander and delete button side by side
+            col1, col2 = st.sidebar.columns([0.8, 0.2])
 
-                # Place the delete button inside the expander
-                if st.button(f"Delete message {i//2 + 1}", key=f"delete_{i}"):
+            with col1:
+                # Add an expander for the conversation history
+                with st.expander(f"User: {user_msg}", expanded=False):
+                    st.write(f"Bot: {bot_msg}")
+
+            with col2:
+                # Add a delete button beside each expander
+                if st.button("❌", key=f"delete_{i}"):
                     # Delete the user-bot pair from chat history
                     del st.session_state.chat_history[i:i+2]
                     save_chat_history(st.session_state.chat_history)  # Save updated history to file
